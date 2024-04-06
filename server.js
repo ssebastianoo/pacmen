@@ -18,8 +18,6 @@ app.prepare().then(() => {
 
   io.on('connection', (socket) => {
     socket.on('disconnecting', () => {
-      console.log('disconnecting');
-      console.log(players[socket.id]);
       const player = players[socket.id];
       if (!player) return;
       socket.leave(player.room);

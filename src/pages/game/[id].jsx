@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { map } from '@/utils/map';
 import { socket } from '@/utils/socket';
 import { usePathname } from 'next/navigation';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 
 export default function App() {
   const [position, setPosition] = useState({ x: 1, y: 1 });
@@ -126,69 +128,92 @@ export default function App() {
   }, [otherPostions, joined, pathname]);
 
   return (
-    <div className='justify-center items-center w-full flex h-screen flex-col gap-5'>
-      <input
-        type='color'
-        value={color}
-        className='text-black'
-        onChange={(e) => {
-          setColor(e.target.value);
+    <div>
+      <div
+        className='flex flex-col gap-2'
+        style={{
+          position: 'absolute',
+          padding: 10,
         }}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            socket.emit('move', {
-              coords: position,
-              color: e.target.value,
-            });
-          }
-        }}
-      />
-      <div>
-        {map.map((row, i) => (
-          <div key={i} className='flex'>
-            {row.map((cell, j) => {
-              if (position.x === j && position.y === i) {
+      >
+        <Button
+          onClick={(e) => {
+            navigator.clipboard.writeText(window.location.href);
+            e.target.innerText = 'Copied!';
+            setTimeout(() => {
+              e.target.innerText = 'Copy room url';
+            }, 1000);
+          }}
+        >
+          Copy room url
+        </Button>
+        <Input
+          type='color'
+          value={color}
+          onChange={(e) => {
+            setColor(e.target.value);
+          }}
+          style={{
+            cursor: 'pointer',
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              socket.emit('move', {
+                coords: position,
+                color: e.target.value,
+              });
+            }
+          }}
+        />
+      </div>
+      <div className='justify-center items-center w-full flex flex-col gap-5 h-screen'>
+        <div>
+          {map.map((row, i) => (
+            <div key={i} className='flex'>
+              {row.map((cell, j) => {
+                if (position.x === j && position.y === i) {
+                  return (
+                    <div
+                      key={j}
+                      style={{
+                        width: blockSize,
+                        height: blockSize,
+                        backgroundColor: color,
+                      }}
+                    ></div>
+                  );
+                }
+
+                const otherPlayer = otherPostions.find(
+                  (x) => x.coords.x === j && x.coords.y === i,
+                );
+                if (otherPlayer) {
+                  return (
+                    <div
+                      key={j}
+                      style={{
+                        width: blockSize,
+                        height: blockSize,
+                        backgroundColor: otherPlayer.color,
+                      }}
+                    ></div>
+                  );
+                }
+
                 return (
                   <div
                     key={j}
                     style={{
                       width: blockSize,
                       height: blockSize,
-                      backgroundColor: color,
+                      backgroundColor: cell === 1 ? 'white' : undefined,
                     }}
                   ></div>
                 );
-              }
-
-              const otherPlayer = otherPostions.find(
-                (x) => x.coords.x === j && x.coords.y === i,
-              );
-              if (otherPlayer) {
-                return (
-                  <div
-                    key={j}
-                    style={{
-                      width: blockSize,
-                      height: blockSize,
-                      backgroundColor: otherPlayer.color,
-                    }}
-                  ></div>
-                );
-              }
-
-              return (
-                <div
-                  key={j}
-                  style={{
-                    width: blockSize,
-                    height: blockSize,
-                    backgroundColor: cell === 1 ? 'white' : undefined,
-                  }}
-                ></div>
-              );
-            })}
-          </div>
-        ))}
+              })}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
