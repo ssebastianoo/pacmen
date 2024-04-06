@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { map } from '@/utils/map';
 import { socket } from '@/utils/socket';
 import { usePathname } from 'next/navigation';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 export default function App() {
   const [position, setPosition] = useState({ x: 1, y: 1 });
