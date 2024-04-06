@@ -17,24 +17,50 @@ app.prepare().then(() => {
   const io = new Server(httpServer);
 
   io.on('connection', (socket) => {
-    socket.on('disconnect', () => {
-      socket.leave(players[socket.id]);
-      socket.broadcast.to(players[socket.id]).em4it('delete', socket.id);
+    socket.on('disconnecting', () => {
+      console.log('disconnecting');
+      console.log(players[socket.id]);
+      const player = players[socket.id];
+      if (!player) return;
+      socket.leave(player.room);
+      socket.broadcast.to(player.room).emit('delete', socket.id);
       delete players[socket.id];
     });
 
     socket.on('join', (data) => {
       socket.join(data.room);
-      console.log(socket.id + ' joined ' + data.room);
-      players[socket.id] = data.room;
+      players[socket.id] = {
+        room: data.room,
+        coords: data.coords,
+        color: data.color,
+        id: socket.id,
+      };
+
       socket.broadcast.to(data.room).emit('move', {
         coords: data.coords,
         color: data.color,
         id: socket.id,
       });
+
+      socket.emit('init', {
+        players: Object.values(players),
+      });
     });
 
     socket.on('move', (data) => {
+      const player = players[socket.id];
+      if (!player) {
+        player[socket.id] = {
+          room: data.room,
+          coords: data.coords,
+          color: data.color,
+          id: socket.id,
+        };
+      } else {
+        player.coords = data.coords;
+        player.color = data.color;
+      }
+
       socket.broadcast.to(data.room).emit('move', {
         coords: data.coords,
         color: data.color,

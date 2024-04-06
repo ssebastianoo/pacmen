@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
 import { map } from '@/utils/map';
 import { socket } from '@/utils/socket';
-import { useRouter } from 'next/router';
+import { usePathname } from 'next/navigation';
 
 export default function App() {
   const [position, setPosition] = useState({ x: 1, y: 1 });
   const [otherPostions, setOtherPositions] = useState([]);
   const [initaliedSpawn, setInitaliedSpawn] = useState(false);
   const [color, setColor] = useState('#fcd56a');
-  const router = useRouter();
+  const [joined, setJoined] = useState(false);
+  const pathname = usePathname();
 
   const blockSize = 20;
 
@@ -66,7 +67,7 @@ export default function App() {
       socket.emit('move', {
         coords: pos,
         color,
-        room: router.query.id,
+        room: pathname,
       });
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -74,12 +75,11 @@ export default function App() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [position, initaliedSpawn, color, router]);
+  }, [position, initaliedSpawn, color, pathname]);
 
   useEffect(() => {
     if (socket) {
       socket.on('move', (data) => {
-        console.log(data);
         if (otherPostions.find((x) => x.id === data.id)) {
           setOtherPositions(
             otherPostions.map((x) => {
@@ -102,18 +102,28 @@ export default function App() {
         }
       });
 
-      socket.emit('join', {
-        room: router.query.id,
-        coords: position,
-        color,
+      socket.on('init', (data) => {
+        setOtherPositions(data.players.filter((x) => x.id !== socket.id));
       });
+
+      if (!joined) {
+        if (pathname) {
+          socket.emit('join', {
+            room: pathname,
+            coords: position,
+            color,
+          });
+          setJoined(true);
+        }
+      }
     }
     return () => {
       socket.off('move');
       socket.off('delete');
+      socket.off('init');
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [otherPostions]);
+  }, [otherPostions, joined, pathname]);
 
   return (
     <div className='justify-center items-center w-full flex h-screen flex-col gap-5'>
