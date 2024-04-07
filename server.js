@@ -40,15 +40,13 @@ app.prepare().then(() => {
         id: socket.id,
       });
 
-      socket.emit('init', {
-        players: Object.values(players),
-      });
+      socket.emit('init', Object.values(players));
     });
 
     socket.on('move', (data) => {
       const player = players[socket.id];
       if (!player) {
-        player[socket.id] = {
+        players[socket.id] = {
           room: data.room,
           coords: data.coords,
           color: data.color,

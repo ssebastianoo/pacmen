@@ -17,6 +17,12 @@ export default function Home() {
           onChange={(e) => {
             setCode(e.target.value);
           }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              if (code.length === 0) return;
+              router.push('/game/' + code);
+            }
+          }}
         />
         <Button
           onClick={() => {

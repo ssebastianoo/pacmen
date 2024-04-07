@@ -4,10 +4,11 @@ import { socket } from '@/utils/socket';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import type { Player } from '@/utils/types';
 
 export default function App() {
   const [position, setPosition] = useState({ x: 1, y: 1 });
-  const [otherPostions, setOtherPositions] = useState([]);
+  const [otherPostions, setOtherPositions] = useState([] as Player[]);
   const [initaliedSpawn, setInitaliedSpawn] = useState(false);
   const [color, setColor] = useState('#fcd56a');
   const [joined, setJoined] = useState(false);
@@ -38,7 +39,7 @@ export default function App() {
     }
     initaliseSpawn();
 
-    const handleKeyDown = (e) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
       switch (e.key) {
         case 'ArrowUp':
           if (map[position.y - 1][position.x] === 0) {
@@ -66,11 +67,13 @@ export default function App() {
         x: pos.x,
         y: pos.y,
       });
-      socket.emit('move', {
-        coords: pos,
-        color,
-        room: pathname,
-      });
+      if (socket) {
+        socket.emit('move', {
+          coords: pos,
+          color,
+          room: pathname,
+        });
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
 
@@ -97,7 +100,6 @@ export default function App() {
       });
 
       socket.on('delete', (id) => {
-        console.log('someone died');
         const dead = otherPostions.find((x) => x.id === id);
         if (dead) {
           setOtherPositions(otherPostions.filter((x) => x.id !== id));
@@ -105,7 +107,7 @@ export default function App() {
       });
 
       socket.on('init', (data) => {
-        setOtherPositions(data.players.filter((x) => x.id !== socket.id));
+        setOtherPositions(data.filter((x) => x.id !== socket?.id));
       });
 
       if (!joined) {
@@ -120,28 +122,24 @@ export default function App() {
       }
     }
     return () => {
-      socket.off('move');
-      socket.off('delete');
-      socket.off('init');
+      if (socket) {
+        socket.off('move');
+        socket.off('delete');
+        socket.off('init');
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [otherPostions, joined, pathname]);
 
   return (
     <div>
-      <div
-        className='flex flex-col gap-2'
-        style={{
-          position: 'absolute',
-          padding: 10,
-        }}
-      >
+      <div className='flex flex-col gap-2 absolute p-3'>
         <Button
           onClick={(e) => {
             navigator.clipboard.writeText(window.location.href);
-            e.target.innerText = 'Copied!';
+            (e.target as HTMLElement).innerText = 'Copied!';
             setTimeout(() => {
-              e.target.innerText = 'Copy room url';
+              (e.target as HTMLElement).innerText = 'Copy room url';
             }, 1000);
           }}
         >
@@ -158,10 +156,13 @@ export default function App() {
           }}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
-              socket.emit('move', {
-                coords: position,
-                color: e.target.value,
-              });
+              if (socket) {
+                socket.emit('move', {
+                  coords: position,
+                  color: (e.target as HTMLInputElement).value,
+                  room: pathname,
+                });
+              }
             }
           }}
         />
