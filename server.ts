@@ -1,37 +1,53 @@
 import { createServer } from 'node:http';
 import next from 'next';
 import { Server } from 'socket.io';
+import type {
+  Player,
+  ServerToClientEvents,
+  ClientToServerEvents,
+} from './src/utils/types';
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = process.env.HOST || 'localhost';
-const port = process.env.PORT || 3000;
+let port = process.env.PORT || 3000;
+
+if (typeof port === 'string') {
+  port = parseInt(port);
+}
 
 // when using middleware `hostname` and `port` must be provided below
 const app = next({ dev, hostname, port });
 const handler = app.getRequestHandler();
-let players = {};
+let players: {
+  [key: string]: Player;
+} = {};
 
 app.prepare().then(() => {
   const httpServer = createServer(handler);
 
-  const io = new Server(httpServer);
+  const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer);
 
   io.on('connection', (socket) => {
     socket.on('disconnecting', () => {
       const player = players[socket.id];
       if (!player) return;
-      socket.leave(player.room);
-      socket.broadcast.to(player.room).emit('delete', socket.id);
+      if (player.room) {
+        socket.leave(player.room);
+        socket.broadcast.to(player.room).emit('delete', socket.id);
+      }
       delete players[socket.id];
     });
 
     socket.on('join', (data) => {
+      const room = Object.values(players).find((x) => x.room === data.room);
+
       socket.join(data.room);
       players[socket.id] = {
         room: data.room,
         coords: data.coords,
         color: data.color,
         id: socket.id,
+        type: room ? 'ghost' : 'pacman',
       };
 
       socket.broadcast.to(data.room).emit('move', {
@@ -40,28 +56,36 @@ app.prepare().then(() => {
         id: socket.id,
       });
 
-      socket.emit('init', Object.values(players));
+      socket.emit('init', {
+        players: Object.values(players),
+        role: room ? 'ghost' : 'pacman',
+      });
     });
 
     socket.on('move', (data) => {
       const player = players[socket.id];
       if (!player) {
+        const room = Object.values(players).find((x) => x.room === data.room);
         players[socket.id] = {
           room: data.room,
           coords: data.coords,
           color: data.color,
           id: socket.id,
+          type: room ? 'ghost' : 'pacman',
         };
       } else {
         player.coords = data.coords;
         player.color = data.color;
       }
 
-      socket.broadcast.to(data.room).emit('move', {
-        coords: data.coords,
-        color: data.color,
-        id: socket.id,
-      });
+      if (data.room) {
+        socket.broadcast.to(data.room).emit('move', {
+          coords: data.coords,
+          color: data.color,
+          id: socket.id,
+          type: data.type,
+        });
+      }
     });
   });
 

@@ -12,6 +12,7 @@ export default function App() {
   const [initaliedSpawn, setInitaliedSpawn] = useState(false);
   const [color, setColor] = useState('#fcd56a');
   const [joined, setJoined] = useState(false);
+  const [type, setType] = useState<'pacman' | 'ghost'>('pacman');
   const pathname = usePathname();
 
   const blockSize = 20;
@@ -72,6 +73,7 @@ export default function App() {
           coords: pos,
           color,
           room: pathname,
+          type,
         });
       }
     };
@@ -80,7 +82,7 @@ export default function App() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [position, initaliedSpawn, color, pathname]);
+  }, [position, initaliedSpawn, color, pathname, type]);
 
   useEffect(() => {
     if (socket) {
@@ -107,7 +109,8 @@ export default function App() {
       });
 
       socket.on('init', (data) => {
-        setOtherPositions(data.filter((x) => x.id !== socket?.id));
+        setOtherPositions(data.players.filter((x) => x.id !== socket?.id));
+        setType(data.role);
       });
 
       if (!joined) {
@@ -150,20 +153,17 @@ export default function App() {
           value={color}
           onChange={(e) => {
             setColor(e.target.value);
+            if (socket) {
+              socket.emit('move', {
+                coords: position,
+                color: (e.target as HTMLInputElement).value,
+                room: pathname,
+                type,
+              });
+            }
           }}
           style={{
             cursor: 'pointer',
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              if (socket) {
-                socket.emit('move', {
-                  coords: position,
-                  color: (e.target as HTMLInputElement).value,
-                  room: pathname,
-                });
-              }
-            }
           }}
         />
       </div>
@@ -180,6 +180,7 @@ export default function App() {
                         width: blockSize,
                         height: blockSize,
                         backgroundColor: color,
+                        borderRadius: type === 'pacman' ? '50%' : 0,
                       }}
                     ></div>
                   );
@@ -196,6 +197,7 @@ export default function App() {
                         width: blockSize,
                         height: blockSize,
                         backgroundColor: otherPlayer.color,
+                        borderRadius: otherPlayer.type === 'pacman' ? '50%' : 0,
                       }}
                     ></div>
                   );
