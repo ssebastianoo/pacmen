@@ -76,13 +76,22 @@ export default function App() {
           type,
         });
       }
+
+      if (type === 'ghost') {
+        const pacman = otherPostions.find((x) => x.type === 'pacman');
+        if (pacman && socket) {
+          if (pacman.coords.x === pos.x && pacman.coords.y === pos.y) {
+            socket.emit('gotcha');
+          }
+        }
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [position, initaliedSpawn, color, pathname, type]);
+  }, [position, initaliedSpawn, color, pathname, type, otherPostions]);
 
   useEffect(() => {
     if (socket) {
@@ -113,6 +122,10 @@ export default function App() {
         setType(data.role);
       });
 
+      socket.on('lost', (data) => {
+        console.log('lost!');
+      });
+
       if (!joined) {
         if (pathname) {
           socket.emit('join', {
@@ -129,6 +142,7 @@ export default function App() {
         socket.off('move');
         socket.off('delete');
         socket.off('init');
+        socket.off('lost');
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -166,6 +180,12 @@ export default function App() {
             cursor: 'pointer',
           }}
         />
+        <p>
+          You are{' '}
+          <span className='underline'>
+            {type === 'pacman' ? 'pacman' : 'a ghost'}
+          </span>
+        </p>
       </div>
       <div className='justify-center items-center w-full flex flex-col gap-5 h-screen'>
         <div>

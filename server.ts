@@ -38,6 +38,16 @@ app.prepare().then(() => {
       delete players[socket.id];
     });
 
+    socket.on('disconnect', () => {
+      const player = players[socket.id];
+      if (!player) return;
+      if (player.room) {
+        socket.leave(player.room);
+        socket.broadcast.to(player.room).emit('delete', socket.id);
+      }
+      delete players[socket.id];
+    });
+
     socket.on('join', (data) => {
       const room = Object.values(players).find((x) => x.room === data.room);
 
@@ -85,6 +95,23 @@ app.prepare().then(() => {
           id: socket.id,
           type: data.type,
         });
+      }
+    });
+
+    socket.on('gotcha', () => {
+      const ghost = Object.values(players).find((x) => x.id === socket.id);
+      if (ghost && ghost.room) {
+        const pacman = Object.values(players).find(
+          (x) => x.room === ghost.room && x.type === 'pacman',
+        );
+        if (pacman && pacman.id) {
+          io.to(ghost.room).emit('delete', pacman.id);
+          socket.to(pacman.id).emit('lost', {
+            killer: ghost.id!,
+            dead: pacman.id,
+          });
+          delete players[pacman.id];
+        }
       }
     });
   });
