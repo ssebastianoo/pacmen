@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { Player } from '@/utils/types';
+import { useRouter } from 'next/router';
 
 export default function App() {
   const [position, setPosition] = useState({ x: 1, y: 1 });
@@ -13,7 +14,9 @@ export default function App() {
   const [color, setColor] = useState('#fcd56a');
   const [joined, setJoined] = useState(false);
   const [type, setType] = useState<'pacman' | 'ghost'>('pacman');
+  const [end, setEnd] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
 
   const blockSize = 20;
 
@@ -76,22 +79,15 @@ export default function App() {
           type,
         });
       }
-
-      if (type === 'ghost') {
-        const pacman = otherPostions.find((x) => x.type === 'pacman');
-        if (pacman && socket) {
-          if (pacman.coords.x === pos.x && pacman.coords.y === pos.y) {
-            socket.emit('gotcha');
-          }
-        }
-      }
     };
-    window.addEventListener('keydown', handleKeyDown);
+    if (!end) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [position, initaliedSpawn, color, pathname, type, otherPostions]);
+  }, [position, initaliedSpawn, color, pathname, type, otherPostions, end]);
 
   useEffect(() => {
     if (socket) {
@@ -136,13 +132,19 @@ export default function App() {
           setJoined(true);
         }
       }
+
+      socket.on('end', () => {
+        setEnd(true);
+      });
     }
+
     return () => {
       if (socket) {
         socket.off('move');
         socket.off('delete');
         socket.off('init');
         socket.off('lost');
+        socket.off('end');
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -150,6 +152,19 @@ export default function App() {
 
   return (
     <div>
+      {end ? (
+        <div className='absolute z-50 bg-[rgba(0,0,0,0.8)] w-full h-screen flex flex-col gap-3 justify-center items-center'>
+          <h1 className='text-7xl italic font-bold'>Ghosts won</h1>
+          <Button
+            size={'lg'}
+            onClick={() => {
+              router.reload();
+            }}
+          >
+            Play Again
+          </Button>
+        </div>
+      ) : null}
       <div className='flex flex-col gap-2 absolute p-3'>
         <Button
           onClick={(e) => {

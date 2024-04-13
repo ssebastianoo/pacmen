@@ -15,7 +15,6 @@ if (typeof port === 'string') {
   port = parseInt(port);
 }
 
-// when using middleware `hostname` and `port` must be provided below
 const app = next({ dev, hostname, port });
 const handler = app.getRequestHandler();
 let players: {
@@ -88,6 +87,25 @@ app.prepare().then(() => {
         player.color = data.color;
       }
 
+      const check = Object.values(players).filter(
+        (x) => x.coords.x === data.coords.x && x.coords.y === data.coords.y,
+      );
+      if (check.length > 1) {
+        const pacman = check.find((x) => x.type === 'pacman');
+        const ghost = check.find((x) => x.type === 'ghost');
+
+        if (pacman && ghost && player.room) {
+          const roomPlayers = Object.values(players).filter(
+            (x) => x.room === data.room,
+          );
+          for (const player of roomPlayers) {
+            delete players[player.id!];
+          }
+
+          io.to(player.room).emit('end');
+        }
+      }
+
       if (data.room) {
         socket.broadcast.to(data.room).emit('move', {
           coords: data.coords,
@@ -95,23 +113,6 @@ app.prepare().then(() => {
           id: socket.id,
           type: data.type,
         });
-      }
-    });
-
-    socket.on('gotcha', () => {
-      const ghost = Object.values(players).find((x) => x.id === socket.id);
-      if (ghost && ghost.room) {
-        const pacman = Object.values(players).find(
-          (x) => x.room === ghost.room && x.type === 'pacman',
-        );
-        if (pacman && pacman.id) {
-          io.to(ghost.room).emit('delete', pacman.id);
-          socket.to(pacman.id).emit('lost', {
-            killer: ghost.id!,
-            dead: pacman.id,
-          });
-          delete players[pacman.id];
-        }
       }
     });
   });

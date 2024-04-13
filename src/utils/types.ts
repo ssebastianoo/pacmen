@@ -11,6 +11,7 @@ export type ServerToClientEvents = {
   delete: (id: string) => void;
   init(data: { players: Player[]; role: 'pacman' | 'ghost' }): void;
   lost: (data: { killer: string; dead: string }) => void;
+  end: () => void;
 };
 
 export type ClientToServerEvents = {
